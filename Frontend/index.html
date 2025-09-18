@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Personenverwaltung</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background-color: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    form label {
+      grid-column: span 2;
+      font-weight: bold;
+    }
+
+    form input {
+      grid-column: span 2;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    form button {
+      padding: 0.7rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #save-button {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    #cancel-button {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 0.8rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .actions button {
+      margin-right: 0.5rem;
+      padding: 0.4rem 0.7rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .edit-button {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    .delete-button {
+      background-color: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Personenverwaltung</h1>
+
+    <form id="person-form">
+      <input type="hidden" id="person-id" />
+      
+      <label for="first-name">Vorname:</label>
+      <input type="text" id="first-name" required />
+      
+      <label for="last-name">Nachname:</label>
+      <input type="text" id="last-name" required />
+      
+      <label for="email">E-Mail:</label>
+      <input type="email" id="email" required />
+      
+      <button type="submit" id="save-button">Speichern</button>
+      <button type="button" id="cancel-button" class="hidden">Abbrechen</button>
+    </form>
+
+    <hr />
+
+    <h2>Alle Personen</h2>
+    <table id="persons-table">
+      <thead>
+        <tr>
+          <th>Vorname</th>
+          <th>Nachname</th>
+          <th>E-Mail</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Personen werden hier dynamisch eingefügt -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const apiUrl = "http://localhost:3000/api/persons"; // <- Passe das ggf. an
+
+    const form = document.getElementById("person-form");
+    const idField = document.getElementById("person-id");
+    const firstNameField = document.getElementById("first-name");
+    const lastNameField = document.getElementById("last-name");
+    const emailField = document.getElementById("email");
+    const saveButton = document.getElementById("save-button");
+    const cancelButton = document.getElementById("cancel-button");
+    const personsTableBody = document.querySelector("#persons-table tbody");
+
+    async function fetchPersons() {
+      const res = await fetch(apiUrl);
+      const persons = await res.json();
+      renderTable(persons);
+    }
+
+    function renderTable(persons) {
+      personsTableBody.innerHTML = "";
+
+      persons.forEach(person => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${person.firstName}</td>
+          <td>${person.lastName}</td>
+          <td>${person.email}</td>
+          <td class="actions">
+            <button class="edit-button" onclick="editPerson(${person.id})">Bearbeiten</button>
+            <button class="delete-button" onclick="deletePerson(${person.id})">Löschen</button>
+          </td>
+        `;
+
+        personsTableBody.appendChild(row);
+      });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const person = {
+        firstName: firstNameField.value,
+        lastName: lastNameField.value,
+        email: emailField.value,
+      };
+
+      const id = idField.value;
+
+      if (id) {
+        // Update
+        await fetch(`${apiUrl}/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(person)
+        });
+      } else {
+        // Create
+        await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(person)
+        });
+      }
+
+      form.reset();
+      idField.value = "";
+      cancelButton.classList.add("hidden");
+      fetchPersons();
+    });
+
+    cancelButton.addEventListener("click", () => {
+      form.reset();
+      idField.value = "";
+      cancelButton.classList.add("hidden");
+    });
+
+    window.editPerson = async function(id) {
+      const res = await fetch(`${apiUrl}/${id}`);
+      const person = await res.json();
+
+      idField.value = person.id;
+      firstNameField.value = person.firstName;
+      lastNameField.value = person.lastName;
+      emailField.value = person.email;
+      cancelButton.classList.remove("hidden");
+    }
+
+    window.deletePerson = async function(id) {
+      if (confirm("Möchtest du diese Person wirklich löschen?")) {
+        await fetch(`${apiUrl}/${id}`, {
+          method: "DELETE"
+        });
+        fetchPersons();
+      }
+    }
+
+    fetchPersons();
+  </script>
+</body>
+</html>
