@@ -1,8 +1,8 @@
-class PersonDTO
+public class PersonDTO
 {
-    string vorname { get; set; }
-    string nachname { get; set; }
-    string email { get; set; }
+    public string vorname { get; set; }
+    public string nachname { get; set; }
+    public string email { get; set; }
 
     public PersonDTO(){}
 }
